@@ -19,14 +19,37 @@ RUN pip3 install pyroute2
 
 WORKDIR /xdp
 
-# Crear script para servidor simple
+# Copy IP manager script
+COPY scripts/ip_manager.py /xdp/
+COPY scripts/manage_blocked_ips.sh /usr/local/bin/
+
+# Crear script para servidor simple (versión corregida)
 RUN echo '#!/bin/bash\n\
 echo "Iniciando servidores de prueba..."\n\
-# Servidor en puerto 80 (permitido)\n\
-nc -l -p 80 -k -c "echo HTTP/1.1 200 OK; echo; echo Servidor en puerto 80 - Permitido" &\n\
-# Servidor en puerto 8080 (bloqueado por XDP)\n\
-nc -l -p 8080 -k -c "echo HTTP/1.1 200 OK; echo; echo Servidor en puerto 8080 - Bloqueado" &\n\
-# Servidor en puerto 9090 (permitido)\n\
-nc -l -p 9090 -k -c "echo HTTP/1.1 200 OK; echo; echo Servidor en puerto 9090 - Permitido" &\n\
+\n\
+# Función para servidor simple que responde una vez\n\
+start_server() {\n\
+    local port=$1\n\
+    local message=$2\n\
+    \n\
+    while true; do\n\
+        echo -e "HTTP/1.1 200 OK\\r\\n\\r\\n$message" | nc -l -p $port -q 1 2>/dev/null\n\
+        sleep 0.1\n\
+    done &\n\
+}\n\
+\n\
+# Iniciar servidores\n\
+start_server 80 "Servidor en puerto 80 - Permitido"\n\
+start_server 8080 "Servidor en puerto 8080 - Bloqueado"\n\
+start_server 9090 "Servidor en puerto 9090 - Permitido"\n\
+\n\
 echo "Servidores iniciados en puertos 80, 8080 y 9090"\n\
+sleep 2\n\
+ps aux | grep nc\n\
 ' > /usr/local/bin/start_servers.sh && chmod +x /usr/local/bin/start_servers.sh
+
+# Montar debugfs para acceso a trace logs
+RUN echo '#!/bin/bash\n\
+mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true\n\
+echo "DebugFS montado para acceso a trace logs"\n\
+' > /usr/local/bin/setup_debug.sh && chmod +x /usr/local/bin/setup_debug.sh

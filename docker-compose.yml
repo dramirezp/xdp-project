@@ -16,7 +16,7 @@ services:
     volumes:
       - ./xdp:/xdp
       - /lib/modules:/lib/modules:ro
-    command: /bin/bash -c "/usr/local/bin/start_servers.sh && python3 /xdp/loader.py && tail -f /dev/null"
+    command: /bin/bash -c "/usr/local/bin/setup_debug.sh && /usr/local/bin/start_servers.sh && python3 /xdp/loader.py && tail -f /dev/null"
 
   client:
     build:

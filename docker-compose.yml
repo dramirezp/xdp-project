@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  host:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: xdp_host
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.10
+    volumes:
+      - ./xdp:/xdp
+      - /lib/modules:/lib/modules:ro
+    command: /bin/bash -c "/usr/local/bin/start_servers.sh && python3 /xdp/loader.py && tail -f /dev/null"
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: xdp_client
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.20
+    depends_on:
+      - host
+    command: /bin/bash -c "tail -f /dev/null"
+
+networks:
+  xdp_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
